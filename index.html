@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文档处理工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 40px 16px; min-height: 100vh; }
+    .container { background: #fff; border-radius: 12px; padding: 32px; width: 100%; max-width: 700px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    label { display: block; font-size: 14px; color: #555; margin-bottom: 6px; }
+    textarea { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 12px; font-size: 15px; resize: vertical; outline: none; transition: border-color 0.2s; color: #333; }
+    textarea:focus { border-color: #4f8ef7; }
+    #input { height: 120px; }
+    #output { height: 120px; background: #f9f9f9; }
+    .generate-btn { margin: 16px 0; width: 100%; padding: 12px; background: #4f8ef7; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+    .generate-btn:hover { background: #3a7de0; }
+    .output-row { display: flex; gap: 10px; align-items: flex-start; }
+    .output-row textarea { flex: 1; }
+    .copy-btn { padding: 10px 18px; background: #34c759; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; white-space: nowrap; height: 44px; align-self: flex-start; }
+    .copy-btn:hover { background: #28a745; }
+    .copy-btn.copied { background: #888; }
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .radio-label { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; color: #333; cursor: pointer; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; transition: border-color 0.2s, background 0.2s; }
+    .radio-label:has(input:checked) { border-color: #4f8ef7; background: #f0f6ff; }
+    .radio-label input { accent-color: #4f8ef7; margin-top: 2px; flex-shrink: 0; }
+    .extra-fields { display: none; flex-direction: column; gap: 8px; margin-top: 10px; width: 100%; }
+    .extra-fields.visible { display: flex; }
+    .extra-fields input[type="text"] { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 8px 10px; font-size: 14px; outline: none; color: #333; }
+    .extra-fields .field-hint { font-size: 12px; color: #888; }
+    .tip { font-size: 12px; color: #aaa; margin-top: 8px; }
+    .nav-btn { font-size: 14px; color: #fff; background: #4f8ef7; padding: 8px 16px; border-radius: 8px; text-decoration: none; }
+    .nav-btn:hover { background: #3a7de0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <h1 style="font-size:20px;color:#333;">文档处理工具</h1>
+      <a href="editor.html" class="nav-btn">公众号排版 &#8594;</a>
+    </div>
+    <label for="input">输入内容（原文）</label>
+    <textarea id="input" placeholder="在这里粘贴你的文字..."></textarea>
+    <label style="margin-top:20px;">选择模板</label>
+    <div class="radio-group">
+      <label class="radio-label">
+        <input type="radio" name="template" value="0" checked onchange="toggleExtra()">
+        从下边内容中找一个博人眼球的角度
+      </label>
+      <label class="radio-label">
+        <input type="radio" name="template" value="1" onchange="toggleExtra()">
+        从下边内容中找一个快递行业关心的博人眼球的角度
+      </label>
+      <label class="radio-label" style="flex-direction:column;align-items:flex-start;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="radio" name="template" value="2" onchange="toggleExtra()">
+          改写文章（根据原文提炼指定主题，改写成450字文章）
+        </div>
+        <div class="extra-fields" id="extraFields">
+          <span class="field-hint">请输入主题词（即 CCCDDD）：</span>
+          <input type="text" id="topicInput" placeholder="例如：电商物流成本">
+        </div>
+      </label>
+    </div>
+    <button class="generate-btn" onclick="generate()">生成</button>
+    <label>生成结果</label>
+    <div class="output-row">
+      <textarea id="output" readonly></textarea>
+      <button class="copy-btn" id="copyBtn" onclick="copyOutput()">复制</button>
+    </div>
+    <p class="tip">点击「复制」按钮即可复制生成的内容</p>
+  </div>
+  <script>
+    const templates = ['从下边内容中找一个博人眼球的角度','从下边内容中找一个快递行业关心的博人眼球的角度'];
+    function toggleExtra() {
+      const v = document.querySelector('input[name="template"]:checked').value;
+      document.getElementById('extraFields').classList.toggle('visible', v === '2');
+    }
+    function buildTemplate3(topic, text) {
+      return '根据如下原文提炼出关于"' + topic + '"的内容，并以此内容为标题改写一篇文章。改写后的文章与原文的任何一句话的重复率要小于1%，围绕新标题去写内容。字数450字。平实易读。文章直接展现出来，直接写到md文件中。文章开头，要直接讲明主题及其背景内容，要有波澜的感觉，想让读者读下去。围绕标题内容，写两个段落，从不同的角度去阐述这个标题，层层递进，如果原文中有数据和事实，要提炼出来写出来，增加文章的说服力。每个段落要有个吸引人的小标题。每个段落要写的自然，去掉AI味。最后一段，总结过渡到标题内容，总结有力，干脆利落，引人深思或者引发读者的情绪共鸣。原文如下：【' + text + '】';
+    }
+    function generate() {
+      const input = document.getElementById('input').value.trim();
+      if (!input) { document.getElementById('output').value = ''; return; }
+      const v = document.querySelector('input[name="template"]:checked').value;
+      let result = '';
+      if (v === '2') {
+        const topic = document.getElementById('topicInput').value.trim();
+        if (!topic) { alert('请输入主题词'); return; }
+        result = buildTemplate3(topic, input);
+      } else {
+        result = templates[v] + '【' + input + '】';
+      }
+      document.getElementById('output').value = result;
+    }
+    function copyOutput() {
+      const text = document.getElementById('output').value;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '已复制';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('copied'); }, 1500);
+      });
+    }
+    document.getElementById('input').addEventListener('keydown', e => { if (e.key === 'Enter' && e.ctrlKey) generate(); });
+  </script>
+</body>
+</html>

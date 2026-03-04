@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>公众号排版编辑器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      padding: 32px 16px;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    .step-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .step-title { font-size: 13px; color: #888; margin-bottom: 12px; letter-spacing: 0.5px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+    .btn-primary { background: #4f8ef7; color: #fff; }
+    .btn-primary:hover { background: #3a7de0; }
+    .btn-green { background: #34c759; color: #fff; }
+    .btn-green:hover { background: #28a745; }
+    .btn-green.copied { background: #888; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+      font-size: 14px; color: #333;
+    }
+    .file-item:hover { border-color: #4f8ef7; background: #f0f6ff; }
+    .file-item.selected { border-color: #4f8ef7; background: #e8f0fe; }
+    .file-date { font-size: 12px; color: #aaa; margin-left: auto; }
+    .title-box {
+      background: #fff; border-radius: 12px; padding: 20px 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .title-label { font-size: 13px; color: #888; margin-bottom: 8px; }
+    .title-text { font-size: 18px; font-weight: bold; color: #222; line-height: 1.5; word-break: break-all; }
+    .preview-card {
+      background: #fff; border-radius: 12px; padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .preview-label { font-size: 13px; color: #888; }
+    #preview {
+      border: 1px solid #eee; border-radius: 8px; padding: 20px;
+      min-height: 300px; background: #fafafa; overflow-y: auto; max-height: 700px;
+    }
+    .wx-p { font-size: 17px; line-height: 1.75; margin-bottom: 24px; text-align: justify; color: #333; }
+    .wx-subtitle {
+      font-size: 17px; font-weight: bold; background: #00bcd4;
+      color: #fff; padding: 4px 10px; border-radius: 4px;
+      margin-bottom: 24px; display: inline-block;
+    }
+    .wx-underline { text-decoration: underline; }
+    .wx-img-wrap { text-align: center; margin-bottom: 24px; }
+    .wx-img-wrap img { max-width: 100%; border-radius: 6px; }
+    .wx-img-block {
+      border: 2px dashed #00bcd4;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 24px;
+      text-align: center;
+      background: #f0fbfc;
+    }
+    .wx-img-block img { max-width: 100%; border-radius: 6px; display: block; margin: 0 auto 10px; }
+    .img-actions { display: flex; align-items: center; justify-content: center; gap: 12px; }
+    .img-label { font-size: 12px; color: #888; }
+    .img-download-btn {
+      font-size: 12px; padding: 4px 12px;
+      background: #00bcd4; color: #fff; border-radius: 6px;
+      text-decoration: none; cursor: pointer;
+    }
+    .img-download-btn:hover { background: #0097a7; }
+    .hint { font-size: 13px; color: #aaa; margin-top: 8px; }
+
+    /* Image picker modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 28px;
+      width: 520px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    }
+    .modal h2 { font-size: 16px; color: #333; margin-bottom: 6px; }
+    .modal p { font-size: 13px; color: #888; margin-bottom: 16px; }
+    .track-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .track-tab {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd;
+      font-size: 13px; cursor: pointer; transition: all 0.2s; color: #555;
+    }
+    .track-tab.active { background: #4f8ef7; color: #fff; border-color: #4f8ef7; }
+    .company-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; min-height: 40px; }
+    .company-chip {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #ddd;
+      font-size: 13px; cursor: pointer; transition: all 0.2s; color: #333;
+    }
+    .company-chip:hover { border-color: #4f8ef7; color: #4f8ef7; }
+    .company-chip.selected { background: #4f8ef7; color: #fff; border-color: #4f8ef7; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel { background: #f0f0f0; color: #555; }
+    .btn-cancel:hover { background: #e0e0e0; }
+    /* 赛道选择 */
+    .track-select-group { display: flex; gap: 10px; flex-wrap: wrap; }
+    .track-select-item {
+      padding: 10px 20px; border-radius: 8px; border: 2px solid #ddd;
+      font-size: 14px; cursor: pointer; transition: all 0.2s; color: #333;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .track-select-item:hover { border-color: #4f8ef7; background: #f0f6ff; }
+    .track-select-item.active { border-color: #4f8ef7; background: #e8f0fe; color: #1a56db; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+    <h1 style="font-size:20px;color:#333;margin-bottom:0;">公众号排版编辑器</h1>
+    <a href="index.html" style="font-size:14px;color:#fff;background:#4f8ef7;padding:8px 16px;border-radius:8px;text-decoration:none;">← 文档处理工具</a>
+  </div>
+
+  <div class="step-card">
+    <div class="step-title">第一步 · 选择公众号赛道</div>
+    <div class="track-select-group" id="trackSelectGroup">
+      <div class="track-select-item active" data-track="bio" onclick="selectPublishTrack(this, 'bio')">
+        🧬 生物分子社
+      </div>
+      <div class="track-select-item" data-track="mfg" onclick="selectPublishTrack(this, 'mfg')">
+        🏭 智能制造之眼
+      </div>
+      <div class="track-select-item" data-track="express" onclick="selectPublishTrack(this, 'express')">
+        📦 快递行业
+      </div>
+    </div>
+  </div>
+
+  <div class="step-card">
+    <div class="step-title">第二步 · 选择文章目录</div>
+    <button class="btn btn-primary" onclick="pickFolder()">选择文件夹</button>
+    <p class="hint" style="margin-top:8px;">选择 D:\Kiro code\日常写作2，浏览器会读取最新三篇 .md 文件</p>
+    <div class="file-list" id="fileList"></div>
+  </div>
+  <div class="title-box" id="titleBox" style="display:none; margin-bottom:20px;">
+    <div class="title-label">文章标题（单独使用）</div>
+    <div class="title-text" id="titleDisplay"></div>
+    <button class="btn btn-green" id="copyTitleBtn" style="margin-top:12px;" onclick="copyTitle()">复制标题</button>
+  </div>
+
+  <div class="preview-card" id="previewCard" style="display:none;">
+    <div class="preview-header">
+      <span class="preview-label">排版预览（正文）</span>
+      <button class="btn btn-green" id="copyBtn" onclick="copyContent()">复制正文</button>
+    </div>
+    <div id="preview"></div>
+  </div>
+</div>
+
+<!-- Image picker modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>选择配图公司</h2>
+    <p>未能从标题自动识别公司，请手动选择赛道和公司名称</p>
+    <div class="track-tabs" id="trackTabs"></div>
+    <div class="company-grid" id="companyGrid"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmCompany()">确认插入图片</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── 赛道 & 公司配置 ──────────────────────────────────────────
+  let currentPublishTrack = 'bio'; // 当前选中的发布赛道
+
+  function selectPublishTrack(el, track) {
+    if (el.classList.contains('disabled')) return;
+    document.querySelectorAll('.track-select-item').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    currentPublishTrack = track;
+  }
+
+  // 赛道模板配置
+  const TRACK_TEMPLATES = {
+    bio: {
+      header: `<p style="font-size:17px;font-weight:bold;text-decoration:underline;text-align:justify;margin-bottom:24px;">聚焦全球制药巨头，洞察行业一手动态。每天3分钟，读懂制药圈。</p><p style="text-align:center;margin-bottom:24px;"><img src="DIVIDER_SRC" style="width:100%;max-width:560px;"></p>`,
+      footer: `<p style="text-align:center;margin-bottom:24px;"><img src="DIVIDER_SRC" style="width:100%;max-width:560px;"></p><p style="font-size:17px;font-weight:bold;text-align:justify;margin-bottom:16px;">📚 往期精选</p><p style="font-size:17px;text-align:justify;margin-bottom:12px;">辉瑞、罗氏最新财报背后的战略调整</p><p style="font-size:17px;text-align:justify;margin-bottom:12px;">2025上半年制药圈十大裁员事件</p><p style="font-size:17px;text-align:justify;margin-bottom:24px;">医药代表转型实录：从月入3万到开药店</p><p style="font-size:17px;text-align:justify;margin-bottom:12px;">📌 关注我们，每天获取制药行业硬核内参</p><p style="font-size:17px;text-align:justify;margin-bottom:12px;">💬 爆料、投稿、合作，请后台留言</p><p style="font-size:17px;color:#888;text-align:justify;margin-bottom:24px;">本文内容仅供行业交流，不构成投资建议。转载请联系授权。</p>`
+    }
+  };
+
+  const TRACKS = [
+    {
+      name: '智能制造之眼',
+      companies: ['西门子','施耐德','ABB','霍尼韦尔','罗克韦尔','伊顿','汇川','艾默生','GE','Autodesk','中控技术']
+    },
+    {
+      name: '快递行业',
+      companies: ['快递']
+    },
+    {
+      name: '生物分子社',
+      companies: ['辉瑞','罗氏','诺华','强生','默沙东','阿斯利康','赛诺菲','莫德纳','葛兰素史克']
+    }
+  ];
+
+  // 图片 base64 缓存：{ "默沙东1": "data:image/png;base64,..." }
+  const IMG_DIR = 'images/';
+  const imgCache = {};
+  let imgReady = false; // 标记图片是否加载完成
+
+  // 页面加载后预先把所有公司图片转成 base64
+  async function preloadImages() {
+    const allCompanies = TRACKS.flatMap(t => t.companies);
+    const exts = ['png', 'jpg', 'jpeg'];
+    const fetches = [];
+    for (const company of allCompanies) {
+      for (let i = 1; i <= 2; i++) {
+        const key = `${company}${i}`;
+        fetches.push(
+          (async () => {
+            for (const ext of exts) {
+              try {
+                const res = await fetch(`${IMG_DIR}${key}.${ext}`);
+                if (res.ok) {
+                  const blob = await res.blob();
+                  imgCache[key] = await blobToBase64(blob);
+                  console.log('图片已加载：', key);
+                  break;
+                }
+              } catch(e) {
+                // 文件不存在，跳过
+              }
+            }
+          })()
+        );
+      }
+    }
+    await Promise.all(fetches);
+    imgReady = true;
+    console.log('所有图片预加载完成，缓存keys：', Object.keys(imgCache));
+  }
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  let selectedTitle = '';
+  let pendingSections = [];
+  let modalResolve = null;
+
+  window.addEventListener('load', () => {
+    preloadImages();
+    loadDivider();
+  });
+
+  async function pickFolder() {
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      const files = [];
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.md')) {
+          const file = await entry.getFile();
+          files.push({ name: entry.name, file, lastModified: file.lastModified });
+        }
+      }
+      files.sort((a, b) => b.lastModified - a.lastModified);
+      renderFileList(files.slice(0, 3));
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('读取失败：' + e.message);
+    }
+  }
+
+  function renderFileList(files) {
+    const list = document.getElementById('fileList');
+    list.innerHTML = '';
+    if (!files.length) { list.innerHTML = '<p style="color:#aaa;font-size:13px;">未找到 .md 文件</p>'; return; }
+    files.forEach(({ name, file }) => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `<span>📄 ${name}</span><span class="file-date">${new Date(file.lastModified).toLocaleDateString('zh-CN')}</span>`;
+      item.onclick = async () => {
+        document.querySelectorAll('.file-item').forEach(el => el.classList.remove('selected'));
+        item.classList.add('selected');
+        processArticle(await file.text());
+      };
+      list.appendChild(item);
+    });
+  }
+
+  // ── 文章解析 ─────────────────────────────────────────────────
+  async function processArticle(md) {
+    const lines = md.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    let title = '', bodyLines = [];
+    if (lines[0].startsWith('#')) {
+      title = lines[0].replace(/^#+\s*/, '');
+      bodyLines = lines.slice(1);
+    } else {
+      title = lines[0];
+      bodyLines = lines.slice(1);
+    }
+    selectedTitle = title;
+    document.getElementById('titleDisplay').textContent = title;
+    document.getElementById('titleBox').style.display = 'block';
+
+    const sections = [];
+    bodyLines.forEach(line => {
+      const clean = line.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '').trim();
+      if (!clean) return;
+      if (line.startsWith('#') || (line.startsWith('**') && line.endsWith('**'))) {
+        sections.push({ type: 'subtitle', content: clean });
+      } else {
+        sections.push({ type: 'text', content: clean });
+      }
+    });
+
+    // 等图片加载完
+    if (!imgReady) {
+      document.getElementById('previewCard').style.display = 'block';
+      document.getElementById('preview').innerHTML = '<p style="color:#aaa;font-size:13px;">图片加载中，请稍候...</p>';
+      await preloadImages();
+    }
+
+    const company = detectCompany(title);
+    let chosenCompany = company;
+    if (!chosenCompany) {
+      chosenCompany = await askUserForCompany();
+    }
+    renderAndShow(sections, chosenCompany);
+  }
+
+  // ── 公司识别 ─────────────────────────────────────────────────
+  function detectCompany(title) {
+    for (const track of TRACKS) {
+      for (const c of track.companies) {
+        if (title.includes(c)) return c;
+      }
+    }
+    return null;
+  }
+
+  // ── Modal ────────────────────────────────────────────────────
+  let activeTrack = 0;
+  let selectedCompany = null;
+
+  function askUserForCompany() {
+    return new Promise(resolve => {
+      modalResolve = resolve;
+      selectedCompany = null;
+      activeTrack = 0;
+      renderTrackTabs();
+      renderCompanyGrid();
+      document.getElementById('modalOverlay').classList.add('open');
+    });
+  }
+
+  function renderTrackTabs() {
+    const el = document.getElementById('trackTabs');
+    el.innerHTML = TRACKS.map((t, i) =>
+      `<div class="track-tab ${i === activeTrack ? 'active' : ''}" onclick="selectTrack(${i})">${t.name}</div>`
+    ).join('');
+  }
+
+  function selectTrack(i) {
+    activeTrack = i;
+    selectedCompany = null;
+    renderTrackTabs();
+    renderCompanyGrid();
+  }
+
+  function renderCompanyGrid() {
+    const el = document.getElementById('companyGrid');
+    el.innerHTML = TRACKS[activeTrack].companies.map(c =>
+      `<div class="company-chip ${selectedCompany === c ? 'selected' : ''}" onclick="selectCompanyChip('${c}')">${c}</div>`
+    ).join('');
+  }
+
+  function selectCompanyChip(name) {
+    selectedCompany = name;
+    renderCompanyGrid();
+  }
+
+  function confirmCompany() {
+    if (!selectedCompany) { alert('请先选择一个公司'); return; }
+    closeModal();
+    if (modalResolve) { modalResolve(selectedCompany); modalResolve = null; }
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    if (modalResolve) { modalResolve(null); modalResolve = null; }
+  }
+
+  // ── 渲染 ─────────────────────────────────────────────────────
+  let dividerBase64 = '';
+
+  function generateDividerPng() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 600;
+    canvas.height = 40;
+    const ctx = canvas.getContext('2d');
+
+    // 渐变主线
+    const grad = ctx.createLinearGradient(0, 0, 600, 0);
+    grad.addColorStop(0,    'rgba(26,35,126,0)');
+    grad.addColorStop(0.2,  'rgba(26,35,126,1)');
+    grad.addColorStop(0.5,  'rgba(13,71,161,1)');
+    grad.addColorStop(0.8,  'rgba(26,35,126,1)');
+    grad.addColorStop(1,    'rgba(26,35,126,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 18, 600, 3);
+
+    // 节点
+    const nodes = [180, 300, 420];
+    nodes.forEach((x, i) => {
+      ctx.beginPath();
+      ctx.arc(x, 19, i === 1 ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = i === 1 ? '#1565c0' : '#0d47a1';
+      ctx.fill();
+    });
+
+    // 虚线连接
+    ctx.setLineDash([3, 2]);
+    ctx.strokeStyle = '#1565c0';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(184, 19); ctx.lineTo(294, 19); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(306, 19); ctx.lineTo(416, 19); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 卫星点
+    ctx.fillStyle = '#42a5f5';
+    ctx.beginPath(); ctx.arc(300, 10, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(300, 28, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#42a5f5';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(300, 12.5); ctx.lineTo(300, 13); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(300, 25); ctx.lineTo(300, 25.5); ctx.stroke();
+
+    return canvas.toDataURL('image/png');
+  }
+
+  async function loadDivider() {
+    dividerBase64 = generateDividerPng();
+  }
+
+  function renderAndShow(sections, company) {
+    const bodyHtml = buildWxHtml(sections, company);
+    const tpl = TRACK_TEMPLATES[currentPublishTrack];
+    let html = '';
+    if (tpl) {
+      const divSrc = dividerBase64 || 'images/divider-bio.svg';
+      html += tpl.header.replace(/DIVIDER_SRC/g, divSrc);
+      html += bodyHtml;
+      html += tpl.footer.replace(/DIVIDER_SRC/g, divSrc);
+    } else {
+      html = bodyHtml;
+    }
+    document.getElementById('preview').innerHTML = html;
+    document.getElementById('previewCard').style.display = 'block';
+  }
+
+  function buildWxHtml(sections, company) {
+    let html = '';
+    let subtitleCount = 0;
+    sections.forEach(sec => {
+      if (sec.type === 'subtitle') {
+        subtitleCount++;
+        if (company) {
+          const key = `${company}${subtitleCount}`;
+          const src = imgCache[key];
+          if (src) {
+            html += `<p style="text-align:center;margin-bottom:24px;"><img src="${src}" alt="${company}配图${subtitleCount}" style="max-width:100%;"></p>`;
+          } else {
+            html += `<p style="color:#aaa;font-size:13px;text-align:center;margin-bottom:24px;">[图片加载中或未找到：${key}]</p>`;
+          }
+        }
+        html += `<p class="wx-p" style="margin-top:24px;margin-bottom:0;"><span class="wx-subtitle">${sec.content}</span></p>`;
+      } else {
+        html += renderParagraphs(sec.content);
+      }
+    });
+    return html;
+  }
+
+  function splitSentences(text) {
+    const parts = [];
+    const regex = /[^。！？!?]+[。！？!?]/g;
+    let match, last = 0;
+    while ((match = regex.exec(text)) !== null) {
+      parts.push(match[0].trim());
+      last = match.index + match[0].length;
+    }
+    const remainder = text.slice(last).trim();
+    if (remainder) parts.push(remainder);
+    return parts.filter(s => s.length > 0);
+  }
+
+  function applyUnderline(sentences) {
+    const total = sentences.length;
+    if (!total) return [];
+    const count = Math.max(1, Math.round(total / 3));
+    const indices = new Set();
+    for (let i = 0; i < count; i++) {
+      indices.add(Math.round(i * (total - 1) / Math.max(count - 1, 1)));
+    }
+    return sentences.map((s, i) => ({ text: s, underline: indices.has(i) }));
+  }
+
+  function renderParagraphs(textContent) {
+    return applyUnderline(splitSentences(textContent)).map(({ text, underline }) =>
+      `<p class="wx-p">${underline ? `<span class="wx-underline">${text}</span>` : text}</p>`
+    ).join('');
+  }
+
+  // ── 复制 ─────────────────────────────────────────────────────
+  function copyTitle() {
+    navigator.clipboard.writeText(selectedTitle).then(() => {
+      const btn = document.getElementById('copyTitleBtn');
+      btn.textContent = '已复制';
+      setTimeout(() => btn.textContent = '复制标题', 1500);
+    });
+  }
+
+  function copyContent() {
+    const el = document.getElementById('preview');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    document.execCommand('copy');
+    sel.removeAllRanges();
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '复制正文'; btn.classList.remove('copied'); }, 1500);
+  }
+</script>
+</body>
+</html>
